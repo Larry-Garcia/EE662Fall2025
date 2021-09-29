@@ -37,7 +37,7 @@ class SensorNode(wsn.Node):
         self.sleep()
         self.addr = None
         self.role = Roles.UNDISCOVERED
-        self.is_root_eligible = True if self.id == 0 else False
+        self.is_root_eligible = True if self.id == 45 else False
         self.c_probe = 0  # c means counter and probe is the name of counter
         self.th_probe = 10  # th means threshold and probe is the name of threshold
         self.received_HB_addresses = []  # keeps received HB message addresses

@@ -177,6 +177,30 @@ class Node:
             print(f"Node {'#' + str(self.id):4}[{self.now:10.5f}] {msg}")
 
     ############################
+    def can_receive(self, dest):
+        """Checks if the given destination address is proper to receive package.
+
+           Args:
+               dest (Addr): An Addr object to check.
+
+           Returns:
+               bool: returns True if the given destination address is proper to receive message.
+        """
+        if dest.is_equal(BROADCAST_ADDR):  # if destination address is broadcast address
+            return True
+        if self.addr is not None:  # if node's address is assigned
+            if dest.is_equal(self.addr):  # if destination address is node's address
+                return True
+            elif dest.node_addr == 255 and dest.net_addr == self.addr.net_addr:  # if destination address is local broadcast address of node's network
+                return True
+        if self.ch_addr is not None:  # if node's cluster head address is assigned
+            if dest.is_equal(self.ch_addr):  # if destination address is node's cluster head address
+                return True
+            elif dest.node_addr == 255 and dest.net_addr == self.ch_addr.net_addr:  # if destination address is local broadcast address of node's cluster head network
+                return True
+        return False
+
+    ############################
     def send(self, pck):
         """Sends given package. If dest address in pck is broadcast address, it sends the package to all neighbors.
 
@@ -187,9 +211,7 @@ class Node:
         """
         for (dist, node) in self.neighbor_distance_list:
             if dist <= self.tx_range:
-                if pck['dest'].is_equal(BROADCAST_ADDR) \
-                        or (node.addr is not None and pck['dest'].is_equal(node.addr)) \
-                        or (node.ch_addr is not None and pck['dest'].is_equal(node.ch_addr)):
+                if node.can_receive(pck['dest']):
                     prop_time = dist / 1000000 - 0.00001 if dist / 1000000 - 0.00001 >0 else 0.00001
                     self.delayed_exec(prop_time, node.on_receive_check, pck)
             else:
