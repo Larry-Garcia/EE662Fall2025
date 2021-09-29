@@ -73,6 +73,14 @@ class Node(wsnlab.Node):
         super().move(x, y)
         self.scene.nodemove(self.id, x, y)
 
+    ####################
+    def draw_parent(self, dest):
+        for (dist, node) in self.neighbor_distance_list:
+            if dist <= self.tx_range:
+                if node.ch_addr is not None and node.ch_addr.is_equal(dest):
+                    self.scene.addlink(node.id, self.id, "parent")
+                    break
+
 
 ###########################################################
 class _FakeScene:
@@ -119,6 +127,7 @@ class Simulator(wsnlab.Simulator):
             self.scene.linestyle("wsnsimpy:ack", color=(0, 1, 1), dash=(5, 5))
             self.scene.linestyle("wsnsimpy:unicast", color=(0, 0, 1), width=3, arrow='head')
             self.scene.linestyle("wsnsimpy:collision", color=(1, 0, 0), width=3)
+            self.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
             if title is None:
                 title = "WsnSimPy"
             self.tkplot = Plotter(windowTitle=title, terrain_size=terrain_size)

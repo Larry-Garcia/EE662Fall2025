@@ -147,6 +147,8 @@ class SensorNode(wsn.Node):
                     self.addr = pck['addr']
                     self.role = Roles.REGISTERED
                     self.scene.nodecolor(self.id, 0, 1, 0)
+                    self.parent_addr = pck['source']
+                    self.draw_parent(pck['source'])
                     self.kill_timer('TIMER_JOIN_REQUEST')
                     yield self.timeout(.5)
                     self.send_join_ack(pck['source'])
@@ -177,6 +179,7 @@ class SensorNode(wsn.Node):
                     self.role = Roles.ROOT
                     self.scene.nodecolor(self.id, 0, 0, 1)
                     self.addr = wsn.Addr(1, 254)
+                    self.ch_addr = wsn.Addr(1, 254)
                     self.set_timer('TIMER_HEART_BEAT', 15)
                 else:  # otherwise it keeps trying to sending probe after a long time
                     self.c_probe = 0
