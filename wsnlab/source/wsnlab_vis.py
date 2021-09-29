@@ -75,10 +75,20 @@ class Node(wsnlab.Node):
 
     ####################
     def draw_parent(self, dest):
+        """Draws parent relation to given destination address.
+
+           Args:
+               dest (Addr): x of position.
+
+           Returns:
+
+        """
         for (dist, node) in self.neighbor_distance_list:
             if dist <= self.tx_range:
                 if node.ch_addr is not None and node.ch_addr.is_equal(dest):
                     self.scene.addlink(node.id, self.id, "parent")
+                    break
+                else:
                     break
 
 
