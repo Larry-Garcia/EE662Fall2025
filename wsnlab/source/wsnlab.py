@@ -106,6 +106,7 @@ class Node:
            sim (Simulator): Simulation environment of node.
            id (int): Global unique ID of node.
            addr (Addr): Network address of node.
+           ch_addr (Addr): Cluster Head network address
            is_sleep (bool): If it is True, It means node is sleeping and can not receive messages.
            Otherwise, node is awaken.
            logging (bool): It is a flag for logging. If it is True, nodes outputs can be seen in terminal.
@@ -133,6 +134,7 @@ class Node:
         self.sim = sim
         self.id = id
         self.addr = Addr(0, id)
+        self.ch_addr = None
         self.is_sleep = False
         self.logging = True
         self.active_timer_list = []
@@ -185,7 +187,9 @@ class Node:
         """
         for (dist, node) in self.neighbor_distance_list:
             if dist <= self.tx_range:
-                if pck['dest'].is_equal(BROADCAST_ADDR) or (node.addr is not None and pck['dest'].is_equal(node.addr)):
+                if pck['dest'].is_equal(BROADCAST_ADDR) \
+                        or (node.addr is not None and pck['dest'].is_equal(node.addr)) \
+                        or (node.ch_addr is not None and pck['dest'].is_equal(node.ch_addr)):
                     prop_time = dist / 1000000 - 0.00001 if dist / 1000000 - 0.00001 >0 else 0.00001
                     self.delayed_exec(prop_time, node.on_receive_check, pck)
             else:
