@@ -7,6 +7,9 @@ import inspect
 import random
 import simpy
 from simpy.util import start_delayed
+import sys
+sys.path.insert(1, '..')
+from wsnlab.source import config
 
 ###########################################################
 class Addr:
@@ -71,7 +74,7 @@ class Addr:
         return False
 
 
-BROADCAST_ADDR = Addr(255, 255)
+BROADCAST_ADDR = Addr(config.BROADCAST_NET_ADDR, config.BROADCAST_NODE_ADDR)
 """Addr: Keeps broadcast address.
 """
 
@@ -203,12 +206,12 @@ class Node:
         if self.addr is not None:  # if node's address is assigned
             if dest.is_equal(self.addr):  # if destination address is node's address
                 return True
-            elif dest.node_addr == 255 and dest.net_addr == self.addr.net_addr:  # if destination address is local broadcast address of node's network
+            elif dest.node_addr == config.BROADCAST_NODE_ADDR and dest.net_addr == self.addr.net_addr:  # if destination address is local broadcast address of node's network
                 return True
         if self.ch_addr is not None:  # if node's cluster head address is assigned
             if dest.is_equal(self.ch_addr):  # if destination address is node's cluster head address
                 return True
-            elif dest.node_addr == 255 and dest.net_addr == self.ch_addr.net_addr:  # if destination address is local broadcast address of node's cluster head network
+            elif dest.node_addr == config.BROADCAST_NODE_ADDR and dest.net_addr == self.ch_addr.net_addr:  # if destination address is local broadcast address of node's cluster head network
                 return True
         return False
 

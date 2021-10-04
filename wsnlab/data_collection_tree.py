@@ -5,7 +5,7 @@ import sys
 sys.path.insert(1, '..\source')
 from source import wsnlab_vis as wsn
 import math
-
+from source import config
 
 Roles = Enum('Roles', 'UNDISCOVERED UNREGISTERED ROOT REGISTERED CLUSTER_HEAD')
 """Enumeration of roles"""
@@ -206,7 +206,7 @@ class SensorNode(wsn.Node):
                 self.ch_addr = pck['addr']
                 self.routing_table[self.root_addr.net_addr] = pck['prev_hop']
                 for gui in self.received_JR_guis:
-                    yield self.timeout(random.uniform(.5,.1))
+                    yield self.timeout(random.uniform(.1,.5))
                     self.send_join_reply(gui, wsn.Addr(self.ch_addr.net_addr,gui))
 
         elif self.role == Roles.UNDISCOVERED:  # if the node is undiscovered
@@ -294,23 +294,23 @@ def create_network(node_class, number_of_nodes=100):
     for i in range(number_of_nodes):
         x = i / edge
         y = i % edge
-        px = 50 + x * 60 + random.uniform(-20, 20)
-        py = 50 + y * 60 + random.uniform(-20, 20)
+        px = 50 + x * config.SIM_NODE_PLACING_CELL_SIZE + random.uniform(-1 * config.SIM_NODE_PLACING_CELL_SIZE / 2, config.SIM_NODE_PLACING_CELL_SIZE / 2)
+        py = 50 + y * config.SIM_NODE_PLACING_CELL_SIZE + random.uniform(-1 * config.SIM_NODE_PLACING_CELL_SIZE / 2, config.SIM_NODE_PLACING_CELL_SIZE / 2)
         node = sim.add_node(node_class, (px, py))
-        node.tx_range = 150
+        node.tx_range = config.NODE_TX_RANGE
         node.logging = True
-        node.arrival = random.uniform(0, 50)
+        node.arrival = random.uniform(0, config.NODE_ARRIVAL_MAX)
 
 
 sim = wsn.Simulator(
-    duration=1000, # simulation Duration in seconds
-    timescale=0.00001, #  The real time dureation of 1 second simualtion time
-    visual=True,    # visualization active
-    terrain_size=(700, 700),    #terrain size
-    title="Data Collection Tree") 
+    duration=config.SIM_DURATION,
+    timescale=config.SIM_TIME_SCALE,
+    visual=config.SIM_VISUALIZATION,
+    terrain_size=config.SIM_TERRAIN_SIZE,
+    title=config.SIM_TITLE)
 
 # creating random network
-create_network(SensorNode, 100)
+create_network(SensorNode, config.SIM_NODE_COUNT)
 
 # start the simulation
 sim.run()

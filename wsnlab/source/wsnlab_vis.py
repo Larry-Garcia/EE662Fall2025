@@ -1,4 +1,4 @@
-"""Visualisation of wsnlab library. Basen on wsnsimpy_tk. Used package instead of message by Mustafa Tosun.
+"""Visualisation of wsnlab library. Based on wsnsimpy_tk. Used package instead of message by Mustafa Tosun.
 """
 import sys
 # insert at 1, 0 is the script path (or '' in REPL)
