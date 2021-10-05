@@ -40,7 +40,7 @@ class SensorNode(wsn.Node):
         self.parent_addr = None
         self.root_addr = None
         self.role = Roles.UNDISCOVERED
-        self.is_root_eligible = True if self.id == 45 else False
+        self.is_root_eligible = True if self.id == ROOT_ID else False
         self.c_probe = 0  # c means counter and probe is the name of counter
         self.th_probe = 10  # th means threshold and probe is the name of threshold
         self.received_HB_addresses = []  # keeps received HB message addresses
@@ -153,9 +153,11 @@ class SensorNode(wsn.Node):
 
     ###################
     def send_network_reply(self, dest, addr):
-        """Sending network request message to root address to be cluster head
+        """Sending network reply message to dest address to be cluster head with a new adress
 
         Args:
+            dest (Addr): destination address
+            addr (Addr): cluster head address of new network
 
         Returns:
 
@@ -172,7 +174,7 @@ class SensorNode(wsn.Node):
 
         """
         if self.role == Roles.ROOT or self.role == Roles.CLUSTER_HEAD:  # if the node is root or cluster head
-            if 'next_hop' in pck.keys() and pck['dest'] != self.addr and pck['dest'] != self.ch_addr:
+            if 'next_hop' in pck.keys() and pck['dest'] != self.addr and pck['dest'] != self.ch_addr:  # forwards message if destination is not itself
                 self.routing_table[pck['source'].net_addr] = pck['prev_hop']
                 self.log('forwarding'+str(pck))
                 self.route_and_forward_package(pck)
@@ -183,7 +185,7 @@ class SensorNode(wsn.Node):
             if pck['type'] == 'JOIN_REQUEST':  # it waits and sends join reply message once received join request
                 yield self.timeout(.5)
                 self.send_join_reply(pck['gui'], wsn.Addr(self.ch_addr.net_addr, pck['gui']))
-            if pck['type'] == 'NETWORK_REQUEST':
+            if pck['type'] == 'NETWORK_REQUEST':  # it sends a network reply to requested node
                 self.log(pck)
                 yield self.timeout(.5)
                 if self.role == Roles.ROOT:
@@ -191,15 +193,15 @@ class SensorNode(wsn.Node):
                     self.routing_table[new_addr.net_addr] = pck['prev_hop']
                     self.send_network_reply(pck['source'],new_addr)
 
-        elif self.role == Roles.REGISTERED:
+        elif self.role == Roles.REGISTERED:  # if the node is registered
             if pck['type'] == 'PROBE':
                 yield self.timeout(.5)
                 self.send_heart_beat()
-            if pck['type'] == 'JOIN_REQUEST':
+            if pck['type'] == 'JOIN_REQUEST':  # it sends a network request to the root
                 self.received_JR_guis.append(pck['gui'])
                 yield self.timeout(.5)
                 self.send_network_request()
-            if pck['type'] == 'NETWORK_REPLY':
+            if pck['type'] == 'NETWORK_REPLY':  # it becomes cluster head and send join reply to the candidates
                 self.log(pck)
                 self.role = Roles.CLUSTER_HEAD
                 self.scene.nodecolor(self.id, 0, 0, 1)
@@ -258,7 +260,7 @@ class SensorNode(wsn.Node):
             else:  # if the counter reached the threshold
                 if self.is_root_eligible:  # if the node is root eligible, it becomes root
                     self.role = Roles.ROOT
-                    self.scene.nodecolor(self.id, 0, 0, 1)
+                    self.scene.nodecolor(self.id, 0, 0, 0)
                     self.addr = wsn.Addr(self.id, 254)
                     self.ch_addr = wsn.Addr(self.id, 254)
                     self.root_addr = self.addr
@@ -280,6 +282,9 @@ class SensorNode(wsn.Node):
                 self.set_timer('TIMER_JOIN_REQUEST', 5)
 
 
+ROOT_ID = random.randint(0, config.SIM_NODE_COUNT)
+
+
 ###########################################################
 def create_network(node_class, number_of_nodes=100):
     """Creates given number of nodes at random positions with random arrival times.
@@ -294,8 +299,8 @@ def create_network(node_class, number_of_nodes=100):
     for i in range(number_of_nodes):
         x = i / edge
         y = i % edge
-        px = 50 + x * config.SIM_NODE_PLACING_CELL_SIZE + random.uniform(-1 * config.SIM_NODE_PLACING_CELL_SIZE / 2, config.SIM_NODE_PLACING_CELL_SIZE / 2)
-        py = 50 + y * config.SIM_NODE_PLACING_CELL_SIZE + random.uniform(-1 * config.SIM_NODE_PLACING_CELL_SIZE / 2, config.SIM_NODE_PLACING_CELL_SIZE / 2)
+        px = 50 + x * config.SIM_NODE_PLACING_CELL_SIZE + random.uniform(-1 * config.SIM_NODE_PLACING_CELL_SIZE / 3, config.SIM_NODE_PLACING_CELL_SIZE / 3)
+        py = 50 + y * config.SIM_NODE_PLACING_CELL_SIZE + random.uniform(-1 * config.SIM_NODE_PLACING_CELL_SIZE / 3, config.SIM_NODE_PLACING_CELL_SIZE / 3)
         node = sim.add_node(node_class, (px, py))
         node.tx_range = config.NODE_TX_RANGE
         node.logging = True
@@ -320,4 +325,5 @@ sim.run()
 # Activated nodes becomes red
 # Discovered nodes will be yellow
 # Registered nodes will be green.
-# Root/Routers/Cluster Heads should be blue
+# Root node will be black.
+# Routers/Cluster Heads should be blue
