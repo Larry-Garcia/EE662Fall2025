@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="092e8846-0231-4152-8f06-0c599685202c" name="Changes" comment="gitignore updated">
+    <list default="true" id="092e8846-0231-4152-8f06-0c599685202c" name="Changes" comment="nodes send their sensor values to the root">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wsnlab/data_collection_tree.py" beforeDir="false" afterPath="$PROJECT_DIR$/wsnlab/data_collection_tree.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wsnlab/source/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/wsnlab/source/config.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -24,14 +23,17 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="G:/My Drive/papers/hexTopology" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/wsnlab" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\mustafa\Documents\GitHub\EE662Fall2021\wsnlab" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\mustafa\Documents\GitHub\EE662Fall2021\wsnlab\source" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.data_collection_tree">
+  <component name="RunManager" selected="Python.data_collection_tree2">
     <configuration name="data_collection_tree" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="EE662Fall2021" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -46,6 +48,28 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="C:\Users\mustafa\Documents\GitHub\EE662Fall2021\wsnlab\data_collection_tree.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="data_collection_tree2" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="EE662Fall2021" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/wsnlab" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/wsnlab/data_collection_tree2.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -78,6 +102,7 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.data_collection_tree2" />
         <item itemvalue="Python.data_collection_tree" />
         <item itemvalue="Python.example" />
       </list>
@@ -102,6 +127,10 @@
       <workItem from="1633563575342" duration="632000" />
       <workItem from="1633993767466" duration="4912000" />
       <workItem from="1634071463012" duration="189000" />
+      <workItem from="1634166402843" duration="1823000" />
+      <workItem from="1634324088839" duration="1280000" />
+      <workItem from="1634368572952" duration="1308000" />
+      <workItem from="1634585478804" duration="4376000" />
     </task>
     <task id="LOCAL-00001" summary="Variable names are arranged">
       <created>1632851830563</created>
@@ -222,7 +251,14 @@
       <option name="project" value="LOCAL" />
       <updated>1633536012633</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="nodes send their sensor values to the root">
+      <created>1634166442933</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1634166442933</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -255,11 +291,13 @@
     <MESSAGE value="example.py added" />
     <MESSAGE value="comments added" />
     <MESSAGE value="gitignore updated" />
-    <option name="LAST_COMMIT_MESSAGE" value="gitignore updated" />
+    <MESSAGE value="nodes send their sensor values to the root" />
+    <option name="LAST_COMMIT_MESSAGE" value="nodes send their sensor values to the root" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/EE662Fall2021$example.coverage" NAME="example Coverage Results" MODIFIED="1633462351918" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wsnlab" />
     <SUITE FILE_PATH="coverage/EE662Fall2021$becoming_root.coverage" NAME="data_collection_tree Coverage Results" MODIFIED="1632874752414" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wsnlab" />
+    <SUITE FILE_PATH="coverage/EE662Fall2021$data_collection_tree2.coverage" NAME="data_collection_tree2 Coverage Results" MODIFIED="1634589366466" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wsnlab" />
     <SUITE FILE_PATH="coverage/EE662Fall2021$data_collection_tree.coverage" NAME="data_collection_tree Coverage Results" MODIFIED="1633997898198" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/wsnlab" />
   </component>
 </project>
