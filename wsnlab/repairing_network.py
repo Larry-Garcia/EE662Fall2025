@@ -218,6 +218,28 @@ class SensorNode(wsn.Node):
             self.send_i_am_orphan()
             self.become_unregistered()
 
+    ###################
+    def route_and_forward_package(self, pck):
+        """Routes and forwards given package
+
+        Args:
+            pck (Dict): package to route and forward it should contain dest, source and type.
+        Returns:
+
+        """
+        if self.role != Roles.ROOT:
+            pck['next_hop'] = self.neighbors_table[self.parent_gui]['ch_addr']
+        if self.ch_addr is not None:
+            if pck['dest'].net_addr == self.ch_addr.net_addr:
+                pck['next_hop'] = pck['dest']
+            else:
+                for child_gui, child_networks in self.child_networks_table.items():
+                    if pck['dest'].net_addr in child_networks:
+                        pck['next_hop'] = self.neighbors_table[child_gui]['addr']
+                        break
+
+        self.send(pck)
+
 
     ###################
     def send_i_am_orphan(self):
@@ -228,8 +250,9 @@ class SensorNode(wsn.Node):
         Returns:
 
         """
-        self.send({'dest': wsn.BROADCAST_ADDR, 'type': 'I_AM_ORPHAN',
-                   'gui': self.id})
+        self.send({'dest': wsn.BROADCAST_ADDR,
+                   'type': 'I_AM_ORPHAN',
+                   'source': self.ch_addr})
 
 
     ###################
@@ -241,7 +264,9 @@ class SensorNode(wsn.Node):
         Returns:
 
         """
-        self.send({'dest': wsn.BROADCAST_ADDR, 'type': 'PROBE'})
+        self.send({'dest': wsn.BROADCAST_ADDR,
+                   'type': 'PROBE',
+                   'source': self.addr})
 
     ###################
     def send_heart_beat(self):
@@ -270,7 +295,10 @@ class SensorNode(wsn.Node):
         Returns:
 
         """
-        self.send({'dest': dest, 'type': 'JOIN_REQUEST', 'gui': self.id})
+        self.send({'dest': dest,
+                   'type': 'JOIN_REQUEST',
+                   'source': self.addr,
+                   'gui': self.id})
 
     ###################
     def send_join_reply(self, gui, addr):
@@ -284,8 +312,13 @@ class SensorNode(wsn.Node):
         Returns:
 
         """
-        self.send({'dest': wsn.BROADCAST_ADDR, 'type': 'JOIN_REPLY', 'source': self.ch_addr,
-                   'gui': self.id, 'dest_gui': gui, 'addr': addr, 'root_addr': self.root_addr,
+        self.send({'dest': wsn.BROADCAST_ADDR,
+                   'type': 'JOIN_REPLY',
+                   'source': self.ch_addr,
+                   'gui': self.id,
+                   'dest_gui': gui,
+                   'addr': addr,
+                   'root_addr': self.root_addr,
                    'hop_count': self.hop_count+1})
 
     ###################
@@ -297,30 +330,10 @@ class SensorNode(wsn.Node):
         Returns:
 
         """
-        self.send({'dest': dest, 'type': 'JOIN_ACK', 'source': self.addr,
+        self.send({'dest': dest,
+                   'type': 'JOIN_ACK',
+                   'source': self.addr,
                    'gui': self.id})
-
-    ###################
-    def route_and_forward_package(self, pck):
-        """Routes and forwards given package
-
-        Args:
-            pck (Dict): package to route and forward it should contain dest, source and type.
-        Returns:
-
-        """
-        if self.role != Roles.ROOT:
-            pck['next_hop'] = self.neighbors_table[self.parent_gui]['ch_addr']
-        if self.ch_addr is not None:
-            if pck['dest'].net_addr == self.ch_addr.net_addr:
-                pck['next_hop'] = pck['dest']
-            else:
-                for child_gui, child_networks in self.child_networks_table.items():
-                    if pck['dest'].net_addr in child_networks:
-                        pck['next_hop'] = self.neighbors_table[child_gui]['addr']
-                        break
-
-        self.send(pck)
 
     ###################
     def send_network_request(self):
@@ -331,11 +344,13 @@ class SensorNode(wsn.Node):
         Returns:
 
         """
-        self.route_and_forward_package({'dest': self.root_addr, 'type': 'NETWORK_REQUEST', 'source': self.addr})
+        self.route_and_forward_package({'dest': self.root_addr,
+                                        'type': 'NETWORK_REQUEST',
+                                        'source': self.addr})
 
     ###################
     def send_network_reply(self, dest, addr):
-        """Sends network reply message to dest address to be cluster head with a new adress
+        """Sends network reply message to dest address
 
         Args:
             dest (Addr): destination address
@@ -344,7 +359,10 @@ class SensorNode(wsn.Node):
         Returns:
 
         """
-        self.route_and_forward_package({'dest': dest, 'type': 'NETWORK_REPLY', 'source': self.addr, 'addr': addr})
+        self.route_and_forward_package({'dest': dest,
+                                        'type': 'NETWORK_REPLY',
+                                        'source': self.addr,
+                                        'addr': addr})
 
     ###################
     def send_network_update(self):
@@ -359,8 +377,11 @@ class SensorNode(wsn.Node):
         for networks in self.child_networks_table.values():
             child_networks.extend(networks)
 
-        self.send({'dest': self.neighbors_table[self.parent_gui]['ch_addr'], 'type': 'NETWORK_UPDATE', 'source': self.addr,
-                   'gui': self.id, 'child_networks': child_networks})
+        self.send({'dest': self.neighbors_table[self.parent_gui]['ch_addr'],
+                   'type': 'NETWORK_UPDATE',
+                   'source': self.addr,
+                   'gui': self.id,
+                   'child_networks': child_networks})
 
     ###################
     def on_receive(self, pck):
@@ -392,7 +413,7 @@ class SensorNode(wsn.Node):
                 if self.role != Roles.ROOT:
                     self.send_network_update()
             if pck['type'] == 'I_AM_ORPHAN':  # if the sender is parent, starts repairing procedure
-                if pck['gui'] == self.parent_gui:
+                if pck['source'] == self.neighbors_table[self.parent_gui]['ch_addr']:
                     self.repair()
             if pck['type'] == 'SENSOR':
                 pass
@@ -415,7 +436,7 @@ class SensorNode(wsn.Node):
                 for gui in self.received_JR_guis:
                     self.send_join_reply(gui, wsn.Addr(self.ch_addr.net_addr,gui))
             if pck['type'] == 'I_AM_ORPHAN':  # if the sender is parent, starts repairing procedure
-                if pck['gui'] == self.parent_gui:
+                if pck['source'] == self.neighbors_table[self.parent_gui]['ch_addr']:
                     self.repair()
 
         elif self.role == Roles.UNDISCOVERED:  # if the node is undiscovered
@@ -553,10 +574,9 @@ create_network(SensorNode, config.SIM_NODE_COUNT)
 # start the simulation
 sim.run()
 
-# Created 100 nodes at random locations with random arrival times.
-# When nodes are created they appear in white
-# Activated nodes becomes red
-# Discovered nodes will be yellow
-# Registered nodes will be green.
-# Root node will be black.
-# Routers/Cluster Heads should be blue
+# Sleeping or dead nodes are white
+# Activated and undiscovered nodes are red
+# Discovered and unregistered nodes are yellow
+# Registered nodes are green.
+# Root node is black.
+# Routers/Cluster Heads are blue
