@@ -472,7 +472,7 @@ class SensorNode(wsn.Node):
     ###################
     def _die_of_energy(self):
         """Turn node off permanently due to energy depletion (8)."""
-        # Example: When power <= MIN_ENERGY_J, node turns dark gray, disconnects children, triggers network reorganization
+        # Example: When power <= MIN_ENERGY_J, node turns dark gray(disappears), disconnects children, triggers network reorganization
         # Root node cannot die from energy depletion - it's critical for network
         if self.id == ROOT_ID:
             self.log("Root node energy depleted, but root cannot die. Energy set to minimum.")
