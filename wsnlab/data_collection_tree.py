@@ -1969,7 +1969,7 @@ log_all_packets(sim.packet_log)
 converged = log_all_nodes_registered()
 
 print("\n" + "=" * 60)
-print("Simulation Finished")
+print("Simulation Finished Finally!!!!")
 print("=" * 60)
 print(f"⏱️  Runtime: {runtime:.2f} seconds ({runtime/60:.2f} minutes)")
 print("=" * 60)
@@ -2181,17 +2181,17 @@ except Exception as e:
     traceback.print_exc()
 
 # Role distribution
-print("\n--- Final Role Distribution ---")
+print("\n--- Final Role Distribution  ---")
 for role, count in ROLE_COUNTS.items():
     print(f"  {role.name}: {count}")
 
 # Convergence verification guide
-print("\n--- Convergence Verification ---")
-print("📁 Check these files to verify convergence:")
-print("   1. topology.csv - Lists all nodes and their final roles")
-print("   2. registration_log.csv - Shows registration times for each node")
-print("   3. Terminal output above - Shows convergence status")
-print("\n💡 Expected roles for convergence:")
+print("\n--- convergence verification helper files ---")
+print("The following files can help verify convergence:")
+print("   1. topology.csv - Listing all nodes and their final roles")
+print("   2. registration_log.csv - Gives registration times for each node")
+print("   3. Terminal output above - Gives convergence status")
+print("\n roles expected for convergence to an extent:")
 print("   - ROOT: 1 node")
 print("   - CLUSTER_HEAD: Multiple nodes (network clusters)")
 print("   - REGISTERED: Leaf nodes (most nodes)")
