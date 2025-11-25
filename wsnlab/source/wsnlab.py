@@ -10,6 +10,8 @@ from simpy.util import start_delayed
 from source import config
 
 ###########################################################
+
+
 class Addr:
     """Use for a network address which has two parts
 
@@ -53,6 +55,11 @@ class Addr:
            Returns:
                bool: returns True if the objects are equal, otherwise False.
         """
+        # Handle None comparison safely
+        if other is None:
+            return False
+        if not isinstance(other, Addr):
+            return False
         if self.net_addr == other.net_addr and self.node_addr == other.node_addr:
             return True
         return False
@@ -75,7 +82,6 @@ class Addr:
 BROADCAST_ADDR = Addr(config.BROADCAST_NET_ADDR, config.BROADCAST_NODE_ADDR)
 """Addr: Keeps broadcast address.
 """
-
 
 
 ###########################################################
@@ -199,17 +205,23 @@ class Node:
                bool: returns True if the given package is proper to receive .
         """
         dest = pck['next_hop'] if 'next_hop' in pck.keys() else pck['dest']
+        # Handle None destination (shouldn't happen, but be safe)
+        if dest is None:
+            return False
         if dest.is_equal(BROADCAST_ADDR):  # if destination address is broadcast address
             return True
         if self.addr is not None:  # if node's address is assigned
             if dest.is_equal(self.addr):  # if destination address is node's address
                 return True
-            elif dest.node_addr == config.BROADCAST_NODE_ADDR and dest.net_addr == self.addr.net_addr:  # if destination address is local broadcast address of node's network
+            # if destination address is local broadcast address of node's network
+            elif dest.node_addr == config.BROADCAST_NODE_ADDR and dest.net_addr == self.addr.net_addr:
                 return True
         if self.ch_addr is not None:  # if node's cluster head address is assigned
-            if dest.is_equal(self.ch_addr):  # if destination address is node's cluster head address
+            # if destination address is node's cluster head address
+            if dest.is_equal(self.ch_addr):
                 return True
-            elif dest.node_addr == config.BROADCAST_NODE_ADDR and dest.net_addr == self.ch_addr.net_addr:  # if destination address is local broadcast address of node's cluster head network
+            # if destination address is local broadcast address of node's cluster head network
+            elif dest.node_addr == config.BROADCAST_NODE_ADDR and dest.net_addr == self.ch_addr.net_addr:
                 return True
         return False
 
@@ -222,10 +234,28 @@ class Node:
            Returns:
 
         """
+        # Assign packet ID and creation time once
+        if 'pkt_id' not in pck:
+            pck['pkt_id'] = self.sim.packet_seq
+            self.sim.packet_seq += 1
+
+        if 'creation_time' not in pck:
+            pck['creation_time'] = self.now
+
+        # Initialize/extend path for packet tracing
+        path = pck.get('path')
+        if path is None:
+            pck['path'] = [self.id]
+        elif path and path[-1] != self.id:
+            pck['path'].append(self.id)
+
+        # Also ensure source_gui is set
+        pck.setdefault('source_gui', getattr(self, 'id', None))
+
         for (dist, node) in self.neighbor_distance_list:
             if dist <= self.tx_range:
                 if node.can_receive(pck):
-                    prop_time = dist / 1000000 - 0.00001 if dist / 1000000 - 0.00001 >0 else 0.00001
+                    prop_time = dist / 1000000 - 0.00001 if dist / 1000000 - 0.00001 > 0 else 0.00001
                     self.delayed_exec(prop_time, node.on_receive_check, pck)
             else:
                 break
@@ -243,7 +273,8 @@ class Node:
 
         """
         self.active_timer_list.append(name)
-        self.delayed_exec(time - 0.00001, self.on_timer_fired_check, name, *args, **kwargs)
+        self.delayed_exec(
+            time - 0.00001, self.on_timer_fired_check, name, *args, **kwargs)
 
     ############################
     def kill_timer(self, name):
@@ -368,7 +399,8 @@ class Node:
         """
         if name in self.active_timer_list:
             self.active_timer_list.remove(name)
-            self.delayed_exec(0.00001, self.on_timer_fired, name, *args, **kwargs)
+            self.delayed_exec(0.00001, self.on_timer_fired,
+                              name, *args, **kwargs)
 
     ############################
     def sleep(self):
@@ -422,19 +454,28 @@ class Simulator:
         """Constructor for Simulator class.
 
            Args:
-               until (double): Duration of simulation.
-               timescale (double): Seconds in real time for 1 second in simulation. It arranges speed of simulation
-               seed (double): seed for Random bbject.
+                until (double): Duration of simulation.
+                timescale (double): Seconds in real time for 1 second in simulation. It arranges speed of simulation
+                                  If <= 0, uses regular Environment (no real-time delays, runs as fast as possible)
+                seed (double): seed for Random bbject.
 
            Returns:
-               Simulator: Created Simulator object.
+                Simulator: Created Simulator object.
         """
-        self.env = simpy.rt.RealtimeEnvironment(factor=timescale, strict=False)
+        # Use regular Environment (no real-time delays) if timescale <= 0 for maximum speed
+        if timescale > 0:
+            self.env = simpy.rt.RealtimeEnvironment(factor=timescale, strict=False)
+        else:
+            self.env = simpy.Environment()
         self.nodes = []
         self.duration = duration
         self.timescale = timescale
         self.random = random.Random(seed)
         self.timeout = self.env.timeout
+        # Packet tracking attributes
+        self.packet_seq = 0
+        self.packet_log = []
+        self.join_times = []
 
     ############################
     @property

@@ -41,12 +41,29 @@ class Node(wsnlab.Node):
            Returns:
 
         """
-        obj_id = self.scene.circle(
-            self.pos[0], self.pos[1],
-            self.tx_range,
-            line="wsnsimpy:tx")
+        # Count attempts
+        if hasattr(self.sim, "total_tx_attempts"):
+            self.sim.total_tx_attempts += 1
+        
+        # Simulate packet loss
+        if random.random() < config.PACKET_LOSS_RATIO:
+            # Count drops
+            if hasattr(self.sim, "total_tx_dropped"):
+                self.sim.total_tx_dropped += 1
+            return
+
+        # UNcomment for Radio Circles
+
+        # obj_id = self.scene.circle(
+        #    self.pos[0], self.pos[1],
+        #    self.tx_range,
+        #    line="wsnsimpy:tx")
+
         super().send(pck)
-        self.delayed_exec(0.2, self.scene.delshape, obj_id)
+
+        # Uncomment for Radio Circles
+        # self.delayed_exec(0.2, self.scene.delshape, obj_id)
+
         # When unicast is added, it needs to be re-arranged
         # if not pck['dest'].is_equal(wsnlab.BROADCAST_ADDR):
         #     destPos = self.sim.nodes[pck['dest'].l].pos
@@ -57,6 +74,19 @@ class Node(wsnlab.Node):
         #     self.delayed_exec(0.2,self.scene.delshape,obj_id)
 
     ###################
+
+    def draw_tx_range(self):
+        """Draws transmission range of the node.
+
+           Args:
+
+           Returns:
+
+        """
+        obj_id = self.scene.circle(
+            self.pos[0], self.pos[1], self.tx_range, line="wsnsimpy:tx")
+        # self.delayed_exec(0.2, self.scene.delshape, obj_id)
+
     def move(self, x, y):
         """Visualise move process in addition to base move method.
 
@@ -116,7 +146,7 @@ class Simulator(wsnlab.Simulator):
         terrain_size (Tuple(double,double)): Size of visualised terrain.
     '''
 
-    def __init__(self, duration, timescale=1, seed=0, terrain_size=(500, 500), visual=True, title=None):
+    def __init__(self, duration, timescale=1, seed=0, terrain_size=(1000, 1000), visual=True, title=None):
         """Constructor for visualised Simulator class.
 
            Args:
@@ -133,13 +163,20 @@ class Simulator(wsnlab.Simulator):
         super().__init__(duration, timescale, seed)
         self.visual = visual
         self.terrain_size = terrain_size
+        # Packet loss statistics
+        self.total_tx_attempts = 0
+        self.total_tx_dropped = 0
         if self.visual:
             self.scene = Scene(realtime=True)
             self.scene.linestyle("wsnsimpy:tx", color=(0, 0, 1), dash=(5, 5))
+            self.scene.linestyle("wsnsimpy:tx_root", color=(0, 1, 1), dash=(5, 5))  # Cyan for root TX range
             self.scene.linestyle("wsnsimpy:ack", color=(0, 1, 1), dash=(5, 5))
-            self.scene.linestyle("wsnsimpy:unicast", color=(0, 0, 1), width=3, arrow='head')
-            self.scene.linestyle("wsnsimpy:collision", color=(1, 0, 0), width=3)
-            self.scene.linestyle("parent", color=(0,.8,0), arrow="tail", width=2)
+            self.scene.linestyle("wsnsimpy:unicast", color=(
+                0, 0, 1), width=3, arrow='head')
+            self.scene.linestyle("wsnsimpy:collision",
+                                 color=(1, 0, 0), width=3)
+            self.scene.linestyle("parent", color=(
+                0, .8, 0), arrow="tail", width=2)
             if title is None:
                 title = "WsnSimPy"
             self.tkplot = Plotter(windowTitle=title, terrain_size=terrain_size)
@@ -158,7 +195,7 @@ class Simulator(wsnlab.Simulator):
         """
         while True:
             self.scene.setTime(self.now)
-            yield self.timeout(0.1)
+            yield self.timeout(10.0)
 
     def run(self):
         """Starts visualisation process. Puts base run method to a Thread so that visualisation become main process.
