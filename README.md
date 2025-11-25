@@ -28,7 +28,11 @@ pip install simpy
 
 ## Quick Start
 
-### 1. Navigate to the Project Directory
+### 1. Navigate to the Project Directory and activate venv then cd 
+
+```bash
+source venv/bin/activate
+```
 
 ```bash
 cd wsnlab
