@@ -146,8 +146,7 @@ Packet Delivery: X packets delivered
   Max delay: X.XXXX sim seconds
   By type: {'DATA': X, 'SENSOR': X, ...}
 
-  Sample paths (first 5 DATA packets):
-    Packet 123: 5 -> 12 -> 3 -> 17 (delay: X.XXXX)
+
     ...
 
 --- Final Role Distribution ---
@@ -420,16 +419,17 @@ Expected output will show network formation, then final statistics including:
 
 **Script**: `generate_graphs.py`
 
-Generates 5 publication-ready graphs:
+Generates 5-6 publication-ready graphs:
 1. **Join Times**: Histogram and CDF of node join times
 2. **Packet Delay**: Distribution and delay vs hop count
 3. **Failure & Recovery**: Orphan count over time with event markers
 4. **Energy Consumption**: Energy by role, TX/RX breakdown, energy per packet, cumulative deaths
 5. **Packet Loss**: Configured vs realized loss comparison
+6. power over time
 
 ---
 
-## Final Statistics Output
+## Example  Statistics Output
 
 ### Terminal Summary (after `sim.run()`)
 ```
