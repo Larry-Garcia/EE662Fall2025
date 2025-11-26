@@ -13,6 +13,7 @@ sys.path.insert(1, '.')
 random.seed(getattr(config, "SEED", 22))
 #Made table o(1) just by using a dict to help performance 
 # ---- Config fallbacks(backup) so this file works but overwritten by config.py ----
+#Variables belows just have default just in case config.py is not found
 TX_RANGES = getattr(config, "NODE_TX_RANGES", {0: config.NODE_TX_RANGE})
 TX_POWER_LEVELS = getattr(config, "TX_POWER_LEVELS", list(TX_RANGES.keys()))
 NODE_DEFAULT_TX_POWER = getattr(
