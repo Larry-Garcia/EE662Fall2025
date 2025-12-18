@@ -11,9 +11,9 @@ sys.path.insert(1, '.')
 
 # Make runs reproducible but can have config overrides
 random.seed(getattr(config, "SEED", 22))
-#Made table o(1) just by using a dict to help performance 
+# Made table o(1) just by using a dict to help performance
 # ---- Config fallbacks(backup) so this file works but overwritten by config.py ----
-#Variables belows just have default just in case config.py is not found
+# Variables belows just have default just in case config.py is not found
 TX_RANGES = getattr(config, "NODE_TX_RANGES", {0: config.NODE_TX_RANGE})
 TX_POWER_LEVELS = getattr(config, "TX_POWER_LEVELS", list(TX_RANGES.keys()))
 NODE_DEFAULT_TX_POWER = getattr(
@@ -36,8 +36,11 @@ JOIN_REQ_EXPAND_WINDOW = getattr(
 JOIN_REQUEST_INTERVAL = getattr(config, "JOIN_REQUEST_TIME_INTERVAL", 20)
 DATA_INTERVAL = getattr(config, "DATA_INTERVAL", 50)
 ENABLE_DATA_PACKETS = getattr(config, "ENABLE_DATA_PACKETS", False)
+ALLOW_ROUTER_PARENT_FALLBACK = getattr(
+    config, "ALLOW_ROUTER_PARENT_FALLBACK", True
+)
 TABLE_SHARE_INTERVAL = getattr(
-    config, "TABLE_SHARE_INTERVAL", HEART_BEAT_INTERVAL) #defaults to 100 for tableshare
+    config, "TABLE_SHARE_INTERVAL", HEART_BEAT_INTERVAL)  # defaults to 100 for tableshare
 MESH_HOP_N = getattr(
     config,
     "MESH_HOP_N",
@@ -53,7 +56,8 @@ ENABLE_PACKET_ROUTE_LOGGING = getattr(
 RX_CURRENT = getattr(config, "RX_CURRENT", 18.8)
 VOLTAGE = getattr(config, "VOLTAGE", 3.0)
 MTU_BITS = getattr(config, "MTU", 127 * 8)       # got some bits
-DATARATE = getattr(config, "DATARATE", 250_000.)  #python allows _ for readability# bps per the ieee 802 standard 
+# python allows _ for readability# bps per the ieee 802 standard
+DATARATE = getattr(config, "DATARATE", 250_000.)
 
 # TX current mapping for energy model (8)
 TX_CURRENTS_MA = getattr(
@@ -184,7 +188,8 @@ def init_csv_files():
     # Power over time CSV
     with open("power_over_time.csv", "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["time", "avg_power_j", "min_power_j", "max_power_j", "alive_nodes", "dead_nodes"])
+        writer.writerow(["time", "avg_power_j", "min_power_j",
+                        "max_power_j", "alive_nodes", "dead_nodes"])
 
     # Energy metrics CSV
     with open("energy_metrics.csv", "w", newline="") as f:
@@ -266,7 +271,7 @@ def log_registration_time(node_id, start_time, registered_time, diff):
 def check_all_nodes_registered():
     """Return True when all nodes are registered / CH / ROOT / ROUTER."""
     global RECOVERY_DURATION, RECOVERY_START_TIME
-    
+
     unregistered_nodes = []
 
     for node in ALL_NODES:
@@ -326,7 +331,7 @@ class SensorNode(wsn.Node):
         self.c_probe = 0
         self.th_probe = 10
         self.hop_count = 99999
-        self.jr_threshold = 5
+        self.jr_threshold = 8
         self.neighbors_table = {}
         self.candidate_parents_table = []
         self.child_networks_table = {}
@@ -476,10 +481,11 @@ class SensorNode(wsn.Node):
         # Example: When power <= MIN_ENERGY_J, node turns dark gray(disappears), disconnects children, triggers network reorganization
         # Root node cannot die from energy depletion - it's critical for network
         if self.id == ROOT_ID:
-            self.log("Root node energy depleted, but root cannot die. Energy set to minimum.")
+            self.log(
+                "Root node energy depleted, but root cannot die. Energy set to minimum.")
             self.power = MIN_ENERGY_J  # Keep at minimum but alive
             return
-        
+
         if getattr(self, "failed", False):
             return  # already dead/killed
 
@@ -490,10 +496,10 @@ class SensorNode(wsn.Node):
         self.remove_tx_range()
         # Dark gray to distinguish energy death
         self.scene.nodecolor(self.id, 0.2, 0.2, 0.2)
-        
+
         # Network reorganization: disconnect all children and make them rejoin
         self._reorganize_network_after_death()
-        
+
         # Log this as a failure event
         try:
             log_failure_event(self.now, self.id, "ENERGY_DEAD")
@@ -507,18 +513,19 @@ class SensorNode(wsn.Node):
         # Erase this node's own parent arrow (if it has a parent)
         if hasattr(self, 'parent_gui') and self.parent_gui is not None:
             self.erase_parent()
-        
+
         # Find all nodes that have this node as their parent
         children_to_disconnect = []
         for node in ALL_NODES:
             if (hasattr(node, 'parent_gui') and
                 node.parent_gui == self.id and
-                not getattr(node, "failed", False)):
+                    not getattr(node, "failed", False)):
                 children_to_disconnect.append(node)
-        
+
         # Disconnect each child and make them rejoin
         for child in children_to_disconnect:
-            child.log(f"Parent {self.id} died (energy depletion). Rejoining network...")
+            child.log(
+                f"Parent {self.id} died (energy depletion). Rejoining network...")
             # Erase parent arrow (green arrow pointing from dead parent to child)
             child.erase_parent()
             # Clear parent relationship
@@ -528,9 +535,10 @@ class SensorNode(wsn.Node):
             child.become_unregistered()
             # Restart join request timer
             child.set_timer('TIMER_JOIN_REQUEST', JOIN_REQUEST_INTERVAL)
-        
+
         if children_to_disconnect:
-            self.log(f"Disconnected {len(children_to_disconnect)} children due to energy death")
+            self.log(
+                f"Disconnected {len(children_to_disconnect)} children due to energy death")
 
     ###################
     def send(self, pck):
@@ -611,12 +619,18 @@ class SensorNode(wsn.Node):
                 self.set_timer('TIMER_EXPORT_NEIGHBOR_CSV',
                                config.EXPORT_NEIGHBOR_CSV_INTERVAL)
 
+        # Guard: CH/Router must hang off CH/ROOT (never REGISTERED). If not, force rejoin.
+        if new_role in (Roles.CLUSTER_HEAD, Roles.ROUTER):
+            self._ensure_valid_backbone_parent()
+
     ###################
     def become_unregistered(self):
         if self.role != Roles.UNDISCOVERED:
             self.kill_all_timers()
             self.log('I became UNREGISTERED')
         self.scene.nodecolor(self.id, 1, 1, 0)
+        # Ensure any TX range visuals from CH/ROOT are removed when stepping down.
+        self.remove_tx_range()
         self.erase_parent()
         self.addr = None
         self.ch_addr = None
@@ -633,6 +647,17 @@ class SensorNode(wsn.Node):
         self.received_JR_guis = []
         self.send_probe()
         self.set_timer('TIMER_JOIN_REQUEST', JOIN_REQUEST_INTERVAL)
+        # If we had children, force them to rejoin since we are no longer a valid parent.
+        self._disconnect_children_on_unregistered()
+
+    ###################
+    def _disconnect_children_on_unregistered(self):
+        """When we become UNREGISTERED, disconnect any children so they rejoin elsewhere."""
+        for node in ALL_NODES:
+            if (getattr(node, "parent_gui", None) == self.id
+                    and not getattr(node, "failed", False)
+                    and node is not self):
+                node.become_unregistered()
 
     ###################
     def draw_tx_range(self):
@@ -790,6 +815,35 @@ class SensorNode(wsn.Node):
         has_child_networks = bool(self.child_networks_table)
         return has_ids or has_members or has_child_networks
 
+    def _parent_role(self):
+        """Return cached role of current parent from neighbor table, if any."""
+        if self.parent_gui is None:
+            return None
+        entry = self.neighbors_table.get(self.parent_gui)
+        return entry.get("role") if entry else None
+
+    def _ensure_valid_backbone_parent(self):
+        """
+        Ensure CH/Router has a CH/ROOT parent.
+        If parent is REGISTERED/None/ROUTER (unless router fallback), drop and rejoin.
+        """
+        if self.role not in (Roles.CLUSTER_HEAD, Roles.ROUTER):
+            return
+        if self.id == ROOT_ID:
+            return
+
+        parent_role = self._parent_role()
+
+        # Allow router fallback only for leafs; backbone nodes must attach to CH/ROOT.
+        allowed = {Roles.CLUSTER_HEAD, Roles.ROOT}
+        if parent_role in allowed:
+            return
+
+        self.log(
+            f"Parent {self.parent_gui} has role {parent_role}; "
+            f"{self.role.name} will rejoin to find CH/ROOT.")
+        self.become_unregistered()
+
     def demote_to_registered(self):
         """Step down from CH/Router to Registered when redundant."""
         # Example: CH with no children demotes to REGISTERED, removes TX range circle, resets to default TX power
@@ -848,11 +902,12 @@ class SensorNode(wsn.Node):
         can_be_parent = True
 
         if self.role in (Roles.REGISTERED, Roles.UNREGISTERED):
-            # Leaf nodes must point to CH/ROOT, never routers
-            if neighbor_role == Roles.ROUTER:
+            # Leaf nodes must point to CH/ROOT, routers allowed only if fallback enabled.
+            if neighbor_role == Roles.ROUTER and not ALLOW_ROUTER_PARENT_FALLBACK:
                 can_be_parent = False
-            # If our current parent just became a router, drop it and re-join.
-            if self.parent_gui == pck['gui'] and neighbor_role == Roles.ROUTER:
+            # If our current parent just became a router and fallback is disabled, drop it and re-join.
+            if (self.parent_gui == pck['gui'] and neighbor_role == Roles.ROUTER
+                    and not ALLOW_ROUTER_PARENT_FALLBACK):
                 self.log(
                     f"Dropping router parent {self.parent_gui}; rejoining.")
                 self.erase_parent()
@@ -883,7 +938,7 @@ class SensorNode(wsn.Node):
                 if d.get('gui') == pck['gui']:
                     existing_idx = idx
                     break
-            
+
             if existing_idx is not None:
                 existing = self.candidate_parents_table[existing_idx]
                 if pck['arrival_time'] > existing.get('arrival_time', 0):
@@ -900,39 +955,75 @@ class SensorNode(wsn.Node):
         min_hop = 99999
         min_hop_gui = 99999
 
+        # CH / ROOT / REGISTERED (1-hop) with root path
+        preferred_candidates_root = []
+        # CH / ROOT / REGISTERED (1-hop) without known root path
+        preferred_candidates_other = []
+        router_candidates = []           # ROUTER fallback when enabled
+        mesh_candidates_root = []        # CH / ROOT within mesh hop budget with root path
+        mesh_candidates_other = []       # CH / ROOT within mesh hop budget without root path
+
         for candidate in self.candidate_parents_table:
             gui = candidate['gui']
             attempts = self.join_req_attempts.get(gui, 0)
             if attempts >= self.jr_threshold:
                 continue
 
-            # Additional constraint check: filter out routers for REGISTERED/UNREGISTERED nodes
-            # and filter out routers for routers
             neighbor_entry = self.neighbors_table.get(gui)
-            if neighbor_entry:
-                neighbor_role = neighbor_entry.get('role')
-                if self.role in (Roles.REGISTERED, Roles.UNREGISTERED):
-                    # Leaf nodes can only attach to CLUSTER_HEAD or ROOT, not routers
-                    if neighbor_role == Roles.ROUTER:
-                        continue
-                # UNREGISTERED nodes CAN attach to Routers (triggering Router -> Proxy Parent)
-                elif self.role == Roles.ROUTER:
-                    # Routers cannot attach to other routers
-                    if neighbor_role == Roles.ROUTER:
-                        continue
+            neighbor_role = neighbor_entry.get(
+                'role') if neighbor_entry else None
 
-            if (self.neighbors_table[gui]['hop_count'] < min_hop or
-                    (self.neighbors_table[gui]['hop_count'] == min_hop and gui < min_hop_gui)):
-                min_hop = self.neighbors_table[gui]['hop_count']
+            if self.role == Roles.ROUTER and neighbor_role == Roles.ROUTER:
+                # Avoid router-to-router chains
+                continue
+
+            if neighbor_role == Roles.ROUTER:
+                if ALLOW_ROUTER_PARENT_FALLBACK:
+                    router_candidates.append(gui)
+                continue
+
+            if neighbor_entry and neighbor_entry.get('root_reachable'):
+                preferred_candidates_root.append(gui)
+            else:
+                preferred_candidates_other.append(gui)
+
+        # Allow mesh-advertised CH/ROOT (via TABLE_SHARE) when no 1-hop candidates exist.
+        if not (preferred_candidates_root or preferred_candidates_other):
+            for gui, packet in self.neighbors_table.items():
+                neighbor_role = packet.get('role')
+                hop = packet.get('neighbor_hop_count', 1)
+                if neighbor_role in (Roles.CLUSTER_HEAD, Roles.ROOT) and hop <= MESH_HOP_N + 1:
+                    if packet.get('root_reachable'):
+                        mesh_candidates_root.append(gui)
+                    else:
+                        mesh_candidates_other.append(gui)
+
+        # Prefer root-connected 1-hop, then other 1-hop, then root-connected mesh, then other mesh, then routers.
+        candidate_pool = (
+            preferred_candidates_root
+            or preferred_candidates_other
+            or mesh_candidates_root
+            or mesh_candidates_other
+            or router_candidates
+        )
+
+        for gui in candidate_pool:
+            hop = self.neighbors_table[gui]['hop_count']
+            if hop < min_hop or (hop == min_hop and gui < min_hop_gui):
+                min_hop = hop
                 min_hop_gui = gui
 
         if min_hop_gui < 99999:
             self.join_req_attempts[min_hop_gui] = self.join_req_attempts.get(
                 min_hop_gui, 0) + 1
-            selected_addr = self.neighbors_table[min_hop_gui]['source']
+            selected_addr = self.neighbors_table[min_hop_gui].get(
+                'next_hop', self.neighbors_table[min_hop_gui]['source'])
             self.send_join_request(selected_addr)
-
-        self.set_timer('TIMER_JOIN_REQUEST', JOIN_REQUEST_INTERVAL)
+            self.set_timer('TIMER_JOIN_REQUEST', JOIN_REQUEST_INTERVAL)
+        else:
+            # No usable candidate; refresh neighbor discovery and retry sooner.
+            self.send_probe()
+            self.set_timer('TIMER_JOIN_REQUEST', JOIN_REQUEST_INTERVAL / 2)
 
     ###################
     def send_probe(self):
@@ -959,6 +1050,9 @@ class SensorNode(wsn.Node):
             'addr': self.addr,
             'ch_addr': self.ch_addr,
             'hop_count': self.hop_count,
+            # Advertise root reachability so orphans prefer backbone-connected parents
+            'root_reachable': self.hop_count < 99999,
+            'root_hops': self.hop_count,
         })
 
     ###################
@@ -974,7 +1068,7 @@ class SensorNode(wsn.Node):
         if source_addr is None:
             self.log("Warning: Cannot send JOIN_REPLY - no valid source address")
             return
-        
+
         self.send({
             'dest': wsn.BROADCAST_ADDR,
             'type': 'JOIN_REPLY',
@@ -992,7 +1086,7 @@ class SensorNode(wsn.Node):
         # Ensure dest is not None - use BROADCAST if dest is invalid
         if dest is None:
             dest = wsn.BROADCAST_ADDR
-        
+
         # Ensure source address exists - routers might not have addr yet
         source_addr = self.addr
         if source_addr is None:
@@ -1003,7 +1097,7 @@ class SensorNode(wsn.Node):
                 # Can't send without a valid source - skip this ACK
                 self.log("Warning: Cannot send JOIN_ACK - no valid source address")
                 return
-        
+
         self.send({'dest': dest, 'type': 'JOIN_ACK',
                   'source': source_addr, 'gui': self.id})
 
@@ -1168,7 +1262,7 @@ class SensorNode(wsn.Node):
         # Skip if we don't have a valid source address
         if self.addr is None:
             return
-        
+
         mesh_neighbors = {}
         for neighbor, packet in self.neighbors_table.items():
             if packet['neighbor_hop_count'] <= MESH_HOP_N:
@@ -1176,8 +1270,8 @@ class SensorNode(wsn.Node):
 
         for neighbor in self.neighbors_table.values():
             # Only send to 1-hop neighbors with valid source addresses
-            if (neighbor['neighbor_hop_count'] == 1 and 
-                neighbor.get('source') is not None):
+            if (neighbor['neighbor_hop_count'] == 1 and
+                    neighbor.get('source') is not None):
                 self.send({
                     'dest': neighbor['source'],
                     'type': 'TABLE_SHARE',
@@ -1474,7 +1568,8 @@ class SensorNode(wsn.Node):
                     # Use our existing net; bias to high IDs to avoid clashes with CH-assigned low IDs.
                     # Router must have an address to assign child addresses
                     if self.addr is None:
-                        self.log("Warning: Router cannot assign address - no addr available")
+                        self.log(
+                            "Warning: Router cannot assign address - no addr available")
                         return
                     self.send_join_reply(pck['gui'], wsn.Addr(
                         self.addr.net_addr, avail_node_id))
@@ -1495,16 +1590,15 @@ class SensorNode(wsn.Node):
                 self.update_neighbor(pck)
 
             if pck['type'] == 'JOIN_REPLY' and pck['dest_gui'] == self.id:
-                # Constraint: REGISTERED nodes cannot attach to routers
-                # Check if the sender is a router - if so, reject this JOIN_REPLY
+                # Constraint: REGISTERED nodes cannot attach to routers (unless fallback enabled)
                 sender_gui = pck['gui']
                 sender_entry = self.neighbors_table.get(sender_gui)
-                if sender_entry:
-                    sender_role = sender_entry.get('role')
-                    # If sender is a router, reject - leaf nodes must join CLUSTER_HEAD or ROOT
-                    if sender_role == Roles.ROUTER:
-                        # Reject this JOIN_REPLY - don't attach to router
-                        return
+                sender_role = sender_entry.get(
+                    'role') if sender_entry else None
+                if sender_role == Roles.ROUTER and not ALLOW_ROUTER_PARENT_FALLBACK:
+                    return
+
+                joined_via_router = sender_role == Roles.ROUTER
 
                 self.set_address(pck['addr'])
                 self.parent_gui = pck['gui']
@@ -1534,6 +1628,9 @@ class SensorNode(wsn.Node):
                     self.register()
                     check_all_nodes_registered()
                     self.set_timer('TIMER_TABLE_SHARE', TABLE_SHARE_INTERVAL)
+                    # If we had to attach via a router, immediately request our own net and promote to CH when granted.
+                    if joined_via_router and self.root_addr is not None:
+                        self.send_network_request()
 
             if pck['type'] == 'CH_NOMINATION':
                 self.send_ch_nom_ack(pck)
@@ -1580,8 +1677,10 @@ class SensorNode(wsn.Node):
             self.set_timer('TIMER_HEART_BEAT', HEART_BEAT_INTERVAL)
 
         elif name == 'TIMER_JOIN_REQUEST':
+            # If we have no candidates, actively probe and retry sooner instead of idling.
             if len(self.candidate_parents_table) == 0:
-                self.become_unregistered()
+                self.send_probe()
+                self.set_timer('TIMER_JOIN_REQUEST', JOIN_REQUEST_INTERVAL / 2)
             else:
                 self.select_and_join()
         elif name == 'TIMER_ROLE_OPTIMIZE':
@@ -1721,7 +1820,7 @@ def write_energy_metrics_csv(path="energy_metrics.csv"):
     if not ALL_NODES:
         print(f"⚠️  Warning: ALL_NODES is empty, cannot write energy metrics")
         return
-    
+
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow([
@@ -1861,19 +1960,20 @@ def kill_random_node():
     """Kill random non-root node(s) based on NUM_NODES_TO_KILL config."""
     num_to_kill = getattr(config, "NUM_NODES_TO_KILL", 1)
     candidates = [n for n in ALL_NODES if n.id != ROOT_ID and not n.failed]
-    
+
     if not candidates:
         print(f"\n⚠️  No nodes available to kill at time {sim.now}")
         return
-    
+
     # Limit number to kill to available candidates
     num_to_kill = min(num_to_kill, len(candidates))
-    
+
     # Randomly select nodes to kill
     victims = random.sample(candidates, num_to_kill)
-    
-    print(f"\n💀 KILLING {len(victims)} node(s) at time {sim.now}: {[v.id for v in victims]}")
-    
+
+    print(
+        f"\n💀 KILLING {len(victims)} node(s) at time {sim.now}: {[v.id for v in victims]}")
+
     for victim in victims:
         victim.failed = True
         victim.sleep()
@@ -1912,16 +2012,16 @@ def sample_power_levels():
     """Sample all nodes' power levels and log to CSV."""
     alive_powers = []
     dead_count = 0
-    
+
     for node in ALL_NODES:
         power = getattr(node, "power", None)
         failed = getattr(node, "failed", False)
-        
+
         if power is not None and not failed:
             alive_powers.append(power)
         else:
             dead_count += 1
-    
+
     if alive_powers:
         avg_power = sum(alive_powers) / len(alive_powers)
         min_power = min(alive_powers)
@@ -1930,9 +2030,9 @@ def sample_power_levels():
         avg_power = 0.0
         min_power = 0.0
         max_power = 0.0
-    
+
     alive_count = len(alive_powers)
-    
+
     # Write to CSV
     with open("power_over_time.csv", "a", newline="") as f:
         writer = csv.writer(f)
@@ -1944,7 +2044,7 @@ def sample_power_levels():
             alive_count,
             dead_count
         ])
-    
+
     # Schedule next sample
     if sim.now + config.POWER_SAMPLING_INTERVAL < sim.duration:
         sim.delayed_exec(config.POWER_SAMPLING_INTERVAL, sample_power_levels)
@@ -1978,7 +2078,8 @@ print("=" * 60)
 # Prominent convergence status
 print("\n" + "=" * 60)
 if converged:
-    print("✅✅✅  Network Convergence stats: SUCCESS  ✅✅✅") #should be impossible for this when energy enabled
+    # should be impossible for this when energy enabled
+    print("✅✅✅  Network Convergence stats: SUCCESS  ✅✅✅")
     print(f"   All {len(ALL_NODES)} nodes are registered!")
 else:
     print(" Network Convergence stats: ")
@@ -2036,12 +2137,13 @@ if attempts > 0:
     print(f"  Dropped by channel: {dropped}")
     print(f"  Realized loss: {loss_pct:.2f}% "
           f"(configured: {configured_pct:.2f}%)")
-    
+
     # Save packet loss stats for graph generation
     try:
         with open("packet_loss_stats.csv", "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(["configured_loss_pct", "realized_loss_pct", "attempts", "dropped"])
+            writer.writerow(
+                ["configured_loss_pct", "realized_loss_pct", "attempts", "dropped"])
             writer.writerow([configured_pct, loss_pct, attempts, dropped])
     except Exception:
         pass
@@ -2059,12 +2161,14 @@ if RECOVERY_START_TIME is not None and RECOVERY_DURATION is None:
         RECOVERY_DURATION = sim.now - RECOVERY_START_TIME
         print(f"✅ RECOVERY COMPLETE (detected at end of simulation)")
     else:
-        print(f"⚠️  Recovery started but not completed: {orphan_count} nodes still unregistered")
+        print(
+            f"⚠️  Recovery started but not completed: {orphan_count} nodes still unregistered")
 
 if RECOVERY_DURATION is not None:
     print(f"⏱️  Time to Recover: {RECOVERY_DURATION:.2f} sim seconds")
 elif RECOVERY_START_TIME is not None:
-    print(f"⏱️  Time to Recover: (recovery started at {RECOVERY_START_TIME:.2f}, ended at {sim.now:.2f})")
+    print(
+        f"⏱️  Time to Recover: (recovery started at {RECOVERY_START_TIME:.2f}, ended at {sim.now:.2f})")
     orphan_count = len([n for n in ALL_NODES
                        if getattr(n, "role", None) not in
                        {Roles.REGISTERED, Roles.CLUSTER_HEAD, Roles.ROOT, Roles.ROUTER}])
@@ -2082,23 +2186,30 @@ if NETWORK_DEATH_TIME is not None:
     death_ratio = len(dead_nodes) / len(ALL_NODES) if ALL_NODES else 0
     print(f"⏱️  NETWORK LIFETIME: {NETWORK_DEATH_TIME:.2f} sim seconds")
     print(f"   (Time until network death threshold reached)")
-    print(f"   💀 Death threshold: {NETWORK_DEATH_THRESHOLD*100:.0f}% nodes dead OR root dead")
-    print(f"   Dead nodes at death time: {len(dead_nodes)}/{len(ALL_NODES)} ({death_ratio*100:.1f}%)")
+    print(
+        f"   💀 Death threshold: {NETWORK_DEATH_THRESHOLD*100:.0f}% nodes dead OR root dead")
+    print(
+        f"   Dead nodes at death time: {len(dead_nodes)}/{len(ALL_NODES)} ({death_ratio*100:.1f}%)")
     print(f"   Simulation duration: {config.SIM_DURATION} sim seconds")
     if NETWORK_DEATH_TIME < config.SIM_DURATION:
-        print(f"   ✅ Network survived {NETWORK_DEATH_TIME/config.SIM_DURATION*100:.1f}% of simulation duration")
+        print(
+            f"   ✅ Network survived {NETWORK_DEATH_TIME/config.SIM_DURATION*100:.1f}% of simulation duration")
     else:
         print(f"   ⚠️  Network died at end of simulation")
 else:
     dead_nodes = [n for n in ALL_NODES if getattr(n, "failed", False)]
     if dead_nodes:
         death_ratio = len(dead_nodes) / len(ALL_NODES) if ALL_NODES else 0
-        print(f"✅ Network lifetime: FULL SIMULATION DURATION ({config.SIM_DURATION} sim seconds)")
+        print(
+            f"✅ Network lifetime: FULL SIMULATION DURATION ({config.SIM_DURATION} sim seconds)")
         print(f"   Network death threshold NOT reached during simulation")
-        print(f"   Dead nodes at end: {len(dead_nodes)}/{len(ALL_NODES)} ({death_ratio*100:.1f}%)")
-        print(f"   ⚠️  Note: {death_ratio*100:.1f}% nodes dead, but 💀 threshold ({NETWORK_DEATH_THRESHOLD*100:.0f}%) not reached")
+        print(
+            f"   Dead nodes at end: {len(dead_nodes)}/{len(ALL_NODES)} ({death_ratio*100:.1f}%)")
+        print(
+            f"   ⚠️  Note: {death_ratio*100:.1f}% nodes dead, but 💀 threshold ({NETWORK_DEATH_THRESHOLD*100:.0f}%) not reached")
     else:
-        print(f"✅ Network lifetime: FULL SIMULATION DURATION ({config.SIM_DURATION} sim seconds)")
+        print(
+            f"✅ Network lifetime: FULL SIMULATION DURATION ({config.SIM_DURATION} sim seconds)")
         print(f"   All nodes survived the entire simulation!")
         print(f"   Perfect network lifetime: 100% survival rate")
 print("=" * 60)
@@ -2107,8 +2218,10 @@ print("=" * 60)
 print("\n--- Energy Metrics ---")
 try:
     # Calculate aggregate statistics
-    total_tx_energy = sum(getattr(n, "tx_energy_consumed", 0.0) for n in ALL_NODES)
-    total_rx_energy = sum(getattr(n, "rx_energy_consumed", 0.0) for n in ALL_NODES)
+    total_tx_energy = sum(getattr(n, "tx_energy_consumed", 0.0)
+                          for n in ALL_NODES)
+    total_rx_energy = sum(getattr(n, "rx_energy_consumed", 0.0)
+                          for n in ALL_NODES)
     total_energy_consumed = total_tx_energy + total_rx_energy
     total_tx_packets = sum(getattr(n, "tx_packet_count", 0) for n in ALL_NODES)
     total_rx_packets = sum(getattr(n, "rx_packet_count", 0) for n in ALL_NODES)
@@ -2117,9 +2230,11 @@ try:
     # Per-node averages
     alive_nodes = [n for n in ALL_NODES if not getattr(n, "failed", False)]
     if alive_nodes:
-        avg_remaining_energy = sum(getattr(n, "power", 0.0) for n in alive_nodes) / len(alive_nodes)
+        avg_remaining_energy = sum(getattr(n, "power", 0.0)
+                                   for n in alive_nodes) / len(alive_nodes)
         avg_consumed_energy = sum(
-            getattr(n, "tx_energy_consumed", 0.0) + getattr(n, "rx_energy_consumed", 0.0)
+            getattr(n, "tx_energy_consumed", 0.0) +
+            getattr(n, "rx_energy_consumed", 0.0)
             for n in alive_nodes
         ) / len(alive_nodes)
     else:
@@ -2139,21 +2254,31 @@ try:
                 "total_remaining": 0.0,
             }
         energy_by_role[role_name]["count"] += 1
-        energy_by_role[role_name]["total_tx"] += getattr(node, "tx_energy_consumed", 0.0)
-        energy_by_role[role_name]["total_rx"] += getattr(node, "rx_energy_consumed", 0.0)
-        energy_by_role[role_name]["total_remaining"] += getattr(node, "power", 0.0)
+        energy_by_role[role_name]["total_tx"] += getattr(
+            node, "tx_energy_consumed", 0.0)
+        energy_by_role[role_name]["total_rx"] += getattr(
+            node, "rx_energy_consumed", 0.0)
+        energy_by_role[role_name]["total_remaining"] += getattr(
+            node, "power", 0.0)
 
     print(f"📊 Total Network Energy Consumption: {total_energy_consumed:.6f} J")
-    print(f"   TX Energy: {total_tx_energy:.6f} J ({total_tx_energy/total_energy_consumed*100:.1f}%)")
-    print(f"   RX Energy: {total_rx_energy:.6f} J ({total_rx_energy/total_energy_consumed*100:.1f}%)")
+    print(
+        f"   TX Energy: {total_tx_energy:.6f} J ({total_tx_energy/total_energy_consumed*100:.1f}%)")
+    print(
+        f"   RX Energy: {total_rx_energy:.6f} J ({total_rx_energy/total_energy_consumed*100:.1f}%)")
     print(f"\n📦 Total Packets: {total_packets}")
     print(f"   TX Packets: {total_tx_packets}")
     print(f"   RX Packets: {total_rx_packets}")
-    print(f"\n⚡ Average Energy per Packet: {total_energy_consumed/total_packets:.9f} J" if total_packets > 0 else "\n⚡ Average Energy per Packet: N/A (no packets)")
-    print(f"   Average TX Energy per Packet: {total_tx_energy/total_tx_packets:.9f} J" if total_tx_packets > 0 else "   Average TX Energy per Packet: N/A")
-    print(f"   Average RX Energy per Packet: {total_rx_energy/total_rx_packets:.9f} J" if total_rx_packets > 0 else "   Average RX Energy per Packet: N/A")
-    print(f"\n🔋 Average Remaining Energy (alive nodes): {avg_remaining_energy:.6f} J")
-    print(f"🔋 Average Consumed Energy (alive nodes): {avg_consumed_energy:.6f} J")
+    print(f"\n⚡ Average Energy per Packet: {total_energy_consumed/total_packets:.9f} J" if total_packets >
+          0 else "\n⚡ Average Energy per Packet: N/A (no packets)")
+    print(f"   Average TX Energy per Packet: {total_tx_energy/total_tx_packets:.9f} J" if total_tx_packets >
+          0 else "   Average TX Energy per Packet: N/A")
+    print(f"   Average RX Energy per Packet: {total_rx_energy/total_rx_packets:.9f} J" if total_rx_packets >
+          0 else "   Average RX Energy per Packet: N/A")
+    print(
+        f"\n🔋 Average Remaining Energy (alive nodes): {avg_remaining_energy:.6f} J")
+    print(
+        f"🔋 Average Consumed Energy (alive nodes): {avg_consumed_energy:.6f} J")
 
     if energy_by_role:
         print(f"\n📈 Energy Consumption by Role:")
@@ -2161,7 +2286,8 @@ try:
             count = stats["count"]
             avg_tx = stats["total_tx"] / count if count > 0 else 0.0
             avg_rx = stats["total_rx"] / count if count > 0 else 0.0
-            avg_remaining = stats["total_remaining"] / count if count > 0 else 0.0
+            avg_remaining = stats["total_remaining"] / \
+                count if count > 0 else 0.0
             print(f"   {role_name}: {count} nodes")
             print(f"      Avg TX Energy: {avg_tx:.6f} J")
             print(f"      Avg RX Energy: {avg_rx:.6f} J")
