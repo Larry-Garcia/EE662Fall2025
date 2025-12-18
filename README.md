@@ -2,6 +2,9 @@
 
 A Wireless Sensor Network (WSN) simulation framework implementing a hierarchical data collection tree with mesh routing capabilities. This project simulates self-organized networks with cluster heads, routing protocols, energy consumption modeling, and comprehensive metrics collection.
 
+## Branch Information
+The simulator source code is available on GitHub. The branch (`gengraphs`) used for this paper includes all graphing and figure generation capabilities. The `main` branch contains a more refined protocol implementation but does not yet include the full visualization features. Both branches share equivalent core protocol logic; `main` represents the cleaner, more maintainable version. However, `gengraphs` provides reference implementations for the visualization components, which may facilitate adding these features to `main` in the future.
+
 ## Features
 
 - **Example Network Topology**: Root → Cluster Heads → Registered Nodes and there is router
@@ -205,10 +208,3 @@ This project is part of EE662 Fall 2025 coursework.
 ## Repository
 
 GitHub: https://github.com/Larry-Garcia/EE662Fall2025
-
-
-## Branch Information
-The simulator source code is available on GitHub. 
-*   **`gengraphs` (Branch)**: Used for the paper, includes all graphing and figure generation capabilities.
-*   **`main`**: Contains a more refined protocol implementation but does not yet include the full visualization features.
-Both branches share equivalent core protocol logic; `main` represents the cleaner, more maintainable version. However, `gengraphs` provides reference implementations for the visualization components, which may facilitate adding these features to `main` in the future.
