@@ -209,6 +209,6 @@ GitHub: https://github.com/Larry-Garcia/EE662Fall2025
 
 ## Branch Information
 The simulator source code is available on GitHub. 
-*   **`gengraphs` (This Branch)**: Used for the paper, includes all graphing and figure generation capabilities.
+*   **`gengraphs` (Branch)**: Used for the paper, includes all graphing and figure generation capabilities.
 *   **`main`**: Contains a more refined protocol implementation but does not yet include the full visualization features.
 Both branches share equivalent core protocol logic; `main` represents the cleaner, more maintainable version. However, `gengraphs` provides reference implementations for the visualization components, which may facilitate adding these features to `main` in the future.
